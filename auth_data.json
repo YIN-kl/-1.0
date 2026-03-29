@@ -22,7 +22,7 @@
     "read_all": "查看所有文档",
     "read_employee": "查看员工相关文档",
     "read_hr": "查看人力资源相关文档",
-    "write_logs": "写入审计日志"
+    "write_logs": "查看和写入审计日志"
   },
   "role_permissions": {
     "admin": [
