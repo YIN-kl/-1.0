@@ -25,15 +25,14 @@ DOCUMENT_KEYWORDS = {
 
 
 def _default_embedding_model(base_url: str) -> str:
+    """根据接口地址推断默认的 Embedding 模型。"""
     if "dashscope.aliyuncs.com" in base_url:
         return "text-embedding-v4"
     return "text-embedding-v3"
 
 
 def get_embeddings():
-    """
-    Use Alibaba Cloud DashScope embeddings via the OpenAI-compatible API.
-    """
+    """创建阿里云 DashScope 的 Embedding 客户端。"""
     load_dotenv(override=False)
 
     api_key = os.getenv("EMBEDDING_API_KEY")
@@ -41,9 +40,9 @@ def get_embeddings():
     model = os.getenv("EMBEDDING_MODEL")
 
     if not api_key:
-        raise ValueError("EMBEDDING_API_KEY is not set. Please check your .env file.")
+        raise ValueError("EMBEDDING_API_KEY 未配置，请检查 .env 文件。")
     if not base_url:
-        raise ValueError("EMBEDDING_BASE_URL is not set. Please check your .env file.")
+        raise ValueError("EMBEDDING_BASE_URL 未配置，请检查 .env 文件。")
     if not model:
         model = _default_embedding_model(base_url)
 
@@ -75,6 +74,8 @@ def get_embeddings():
         import numpy as np
 
         class SimpleEmbeddings(Embeddings):
+            """当远程 Embedding 初始化失败时的本地兜底实现。"""
+
             def embed_documents(self, texts):
                 return [self.embed_query(text) for text in texts]
 
@@ -89,9 +90,7 @@ def get_embeddings():
 
 
 def load_api_key() -> None:
-    """
-    Load chat and embedding API settings from environment variables or .env.
-    """
+    """从环境变量或 .env 中加载聊天模型和 Embedding 的配置。"""
     load_dotenv(override=False)
 
     api_key_var = "OPENAI_API_KEY"
@@ -116,10 +115,12 @@ def load_api_key() -> None:
 
 
 def load_documents(folder: str = "./documents") -> list[Document]:
+    """加载本地制度文档，并补充关键词和权限元数据。"""
     docs = []
     for item in listdir(folder):
         loader = TextLoader(path.join(folder, item), encoding="utf-8")
         loaded_docs = loader.load()
+
         for doc in loaded_docs:
             keywords = []
             for name, values in DOCUMENT_KEYWORDS.items():
@@ -139,13 +140,12 @@ def load_documents(folder: str = "./documents") -> list[Document]:
             }
             doc.page_content = "关键词：" + ", ".join(keywords) + "\n\n" + doc.page_content
             docs.append(doc)
+
     return docs
 
 
 def populate_vector_db(docs: list[Document], db_path: str = "vectors") -> VectorStore:
-    """
-    Build the vector database.
-    """
+    """构建并保存 FAISS 向量库。"""
     print("Loading embedding model...")
     embeddings = get_embeddings()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
@@ -159,9 +159,7 @@ def populate_vector_db(docs: list[Document], db_path: str = "vectors") -> Vector
 
 
 def filter_documents_by_permission(docs: list[Document], username: str) -> list[Document]:
-    """
-    Filter documents according to the user's permissions.
-    """
+    """按照用户权限过滤文档。"""
     from auth import rbac
 
     filtered_docs = []
@@ -173,9 +171,7 @@ def filter_documents_by_permission(docs: list[Document], username: str) -> list[
 
 
 def load_vector_db(db_path: str = "vectors", username: str = None) -> VectorStore:
-    """
-    Load the vector database and rebuild it if needed.
-    """
+    """加载已有向量库，如果失败则自动重建。"""
     embeddings = get_embeddings()
 
     try:
@@ -213,9 +209,7 @@ def load_vector_db(db_path: str = "vectors", username: str = None) -> VectorStor
 
 
 def content_filter(response: str, username: str) -> str:
-    """
-    Filter generated content based on the user's permissions.
-    """
+    """对生成结果做敏感信息过滤。"""
     from auth import rbac
 
     sensitive_keywords = [
@@ -241,21 +235,23 @@ def content_filter(response: str, username: str) -> str:
 
 
 def get_retrieval_chain(username: str = None) -> Runnable:
-    """
-    Create the RAG retrieval chain.
-    """
+    """创建带权限过滤和内容审查的 RAG 检索链。"""
     load_api_key()
     prompt = ChatPromptTemplate.from_template(
-        """请根据以下上下文回答问题，确保答案完全基于上下文内容，不要添加任何外部信息。
+        """请严格根据下面提供的上下文回答问题。
 
-        <上下文>
-        {context}
-        </上下文>
+如果上下文中没有明确答案，请直接回答“根据当前知识库内容，无法确定该问题的答案”。
+不要编造内容，也不要补充上下文之外的信息。
 
-        问题: {input}
+<上下文>
+{context}
+</上下文>
 
-        回答:"""
+问题：{input}
+
+回答："""
     )
+
     llm = ChatOpenAI(
         openai_api_key=os.environ["OPENAI_API_KEY"],
         base_url=os.environ.get("OPENAI_BASE_URL"),
@@ -286,7 +282,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if path.exists(args.db_path) and args.repopulate is False:
         print(
-            f"The vector DB path '{args.db_path}' already exists. Run with option --repopulate to force repopulation."
+            f"The vector DB path '{args.db_path}' already exists. "
+            "Run with option --repopulate to force repopulation."
         )
         exit()
 
