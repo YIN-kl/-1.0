@@ -1,27 +1,14 @@
 FROM python:3.12-slim
 
-WORKDIR /code
-
-COPY ./requirements.txt /code/requirements.txt
-
-# copy over the vectors if available
-COPY ./vector[s] /code/vectors
-
-COPY ./documents /code/documents
-COPY ./.env /code/.env
-COPY ./main.py /code/main.py
-COPY ./rag.py /code/rag.py
-
-ARG OPENAI_API_KEY=""
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
+WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
 
-# generate vectors if not available
-RUN python rag.py
-
-CMD ["fastapi", "run", "main.py", "--port", "8000"]
+COPY . /app
 
 EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

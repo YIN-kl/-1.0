@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.git/
+.gitignore
+.env
+server.out.log
+server.err.log
+response*.json
+audit_logs.json

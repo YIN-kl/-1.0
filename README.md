@@ -74,6 +74,16 @@ rag-graduation-project/
 pip install -r requirements.txt
 ```
 
+可选测试：
+
+```bash
+python test_api.py
+```
+
+这个脚本会分别测试：
+- DeepSeek 聊天模型是否连通
+- 阿里云 Embedding 是否连通
+
 ## 环境变量配置
 
 先复制示例配置：
@@ -317,6 +327,18 @@ docker build -t rag-app .
 ```bash
 docker run -p 8000:8000 --env-file .env rag-app
 ```
+
+说明：
+- 镜像不会内置真实 `.env`
+- 请在运行容器时通过 `--env-file .env` 传入配置
+- 如果你修改了文档或 Embedding 模型，建议先在宿主机重新生成 `vectors/` 后再构建镜像
+
+## 辅助脚本
+
+- `python test_api.py`
+  用于快速测试 DeepSeek 和阿里云 Embedding 接口是否可用
+- `sample.sh`
+  用于演示登录后调用 `/question` 接口的完整流程
 
 ## 后续可扩展方向
 
